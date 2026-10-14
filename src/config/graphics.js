@@ -1,0 +1,20 @@
+/** Rendering options (purely visual, never read by physics). */
+export const GRAPHICS = {
+  shadows: true,
+  shadowMapSize: 2048,
+  maxPixelRatio: 2,
+  antialias: true,
+  particles: true,
+  stadium: true,
+  bloom: true,
+  bloomStrength: 0.52,
+  bloomRadius: 0.55,
+  bloomThreshold: 0.24,
+  ambientIntensity: 0.9,
+  sunIntensity: 1.9,
+  rimIntensity: 0.32,
+  fogColor: 0x0a1420,
+  skyTopColor: 0x071822,
+  skyHorizonColor: 0x1b3555,
+  skyGlowColor: 0x4d709d,
+};
