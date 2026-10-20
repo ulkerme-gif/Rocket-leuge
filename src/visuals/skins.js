@@ -4,8 +4,11 @@ import * as THREE from 'three';
  * Car skins ("kaplama"): a small JSON description that is saved on the tablet,
  * sent to the host when joining a room, and painted into a canvas texture.
  *
- * { v: 1, base: 'team' | '#rrggbb', accent: '#rrggbb', pattern, number: '' | '0'..'99', art: '' | 384 hex chars }
+ * { v: 1, base: 'team' | '#rrggbb', accent: '#rrggbb', pattern, number: '' | '0'..'99', art: '' | 384 hex chars,
+ *   body?: 'roadster' }
  * art = 32 x 12 pixel drawing for the doors, one hex digit per cell (0 = transparent).
+ * body = car model. Omitted for the classic car, so older skins and older tablets are unaffected
+ * (a tablet that does not know a body simply draws the classic car).
  */
 export const SKIN_KEY = 'rocket-arena-skin';
 export const ART_W = 32;
@@ -24,6 +27,9 @@ export const ART_PALETTE = Object.freeze([
   '#2f86df', '#1b2f7a', '#8c4be6', '#ff6fb5', '#7a4a22', '#8f9aa6', '#d4a72c',
 ]);
 export const TEAM_BODY = Object.freeze({ blue: '#1f74e0', orange: '#f0661a' });
+/** Car models. Everything except 'classic' is unlocked with a secret code (src/game/unlocks.js). */
+export const CAR_BODIES = Object.freeze(['classic', 'roadster']);
+export const BODY_LABELS = Object.freeze({ classic: 'KLASİK', roadster: 'YILDIRIM ⚡' });
 export const DEFAULT_SKIN = Object.freeze({ v: 1, base: 'team', accent: '#ffffff', pattern: 'solid', number: '', art: '' });
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -34,7 +40,7 @@ export function cleanSkin(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT_SKIN };
   const art = typeof raw.art === 'string' && raw.art.length === ART_W * ART_H && /^[0-9a-f]+$/i.test(raw.art)
     ? raw.art.toLowerCase() : '';
-  return {
+  const skin = {
     v: 1,
     base: raw.base === 'team' || (typeof raw.base === 'string' && HEX.test(raw.base)) ? String(raw.base).toLowerCase() : 'team',
     accent: typeof raw.accent === 'string' && HEX.test(raw.accent) ? raw.accent.toLowerCase() : DEFAULT_SKIN.accent,
@@ -42,12 +48,20 @@ export function cleanSkin(raw) {
     number: typeof raw.number === 'string' && /^\d{0,2}$/.test(raw.number) ? raw.number : '',
     art: art === EMPTY_ART ? '' : art,
   };
+  if (CAR_BODIES.includes(raw.body) && raw.body !== 'classic') skin.body = raw.body;
+  return skin;
 }
 
-export const isDefaultSkin = (skin) => {
+export const carBody = (skin) => (skin && CAR_BODIES.includes(skin.body) ? skin.body : 'classic');
+
+/** True when the paint needs no texture (team colour, no pattern, number or drawing). Ignores the car model. */
+export const isDefaultPaint = (skin) => {
   const s = cleanSkin(skin);
   return s.base === 'team' && s.pattern === 'solid' && !s.number && !s.art;
 };
+
+/** True when nothing differs from the plain team car: classic model and default paint. */
+export const isDefaultSkin = (skin) => isDefaultPaint(skin) && carBody(cleanSkin(skin)) === 'classic';
 
 export function loadSkin(storage = globalThis.localStorage) {
   try { return cleanSkin(JSON.parse(storage?.getItem(SKIN_KEY) ?? 'null')); } catch { return { ...DEFAULT_SKIN }; }

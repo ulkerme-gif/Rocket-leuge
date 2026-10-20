@@ -1,7 +1,8 @@
 import {
-  ART_H, ART_PALETTE, ART_W, DEFAULT_SKIN, PATTERN_LABELS, SKIN_COLORS, SKIN_PATTERNS, TEAM_BODY,
-  artCell, cleanSkin, paintCell,
+  ART_H, ART_PALETTE, ART_W, BODY_LABELS, CAR_BODIES, DEFAULT_SKIN, PATTERN_LABELS, SKIN_COLORS, SKIN_PATTERNS, TEAM_BODY,
+  artCell, carBody, cleanSkin, paintCell,
 } from '../visuals/skins.js';
+import { isUnlocked } from '../game/unlocks.js';
 
 const COLOR_NAMES = ['Mavi', 'Turuncu', 'Beyaz', 'Siyah', 'Kırmızı', 'Sarı', 'Yeşil', 'Turkuaz', 'Mor', 'Pembe', 'Kahverengi', 'Gri'];
 const ART_NAMES = [null, 'Beyaz', 'Siyah', 'Kırmızı', 'Turuncu', 'Sarı', 'Açık yeşil', 'Yeşil', 'Turkuaz', 'Mavi', 'Lacivert', 'Mor', 'Pembe', 'Kahverengi', 'Gri', 'Altın'];
@@ -26,6 +27,18 @@ export class Garage {
     this._swatches('garage-base', [['team', 'TAKIM RENGİ', 'Takım rengi']].concat(SKIN_COLORS.map((c, i) => [c, '', COLOR_NAMES[i]])),
       (value) => this.set({ base: value }));
     this._swatches('garage-accent', ACCENTS.map((c, i) => [c, '', ACCENT_NAMES[i]]), (value) => this.set({ accent: value }));
+    // Car models: the row only appears once a secret car is unlocked on this tablet.
+    const bodies = this.el('garage-body');
+    for (const body of CAR_BODIES) {
+      const b = doc.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.value = body;
+      b.textContent = BODY_LABELS[body];
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => this.set({ body }));
+      bodies.append(b);
+    }
     const patterns = this.el('garage-pattern');
     for (const p of SKIN_PATTERNS) {
       const b = doc.createElement('button');
@@ -74,6 +87,9 @@ export class Garage {
   open(skin) {
     this.skin = cleanSkin(skin);
     this.tool = this.tool || 1;
+    const unlocked = CAR_BODIES.filter((body) => body === 'classic' || isUnlocked(body) || carBody(this.skin) === body);
+    for (const b of this.el('garage-body').querySelectorAll('button')) b.hidden = !unlocked.includes(b.dataset.value);
+    this.el('garage-body-row').classList.toggle('hidden', unlocked.length < 2);
     this.el('garage-number').value = this.skin.number;
     this._render();
   }
@@ -90,6 +106,7 @@ export class Garage {
   }
 
   _render() {
+    this._pressed('garage-body', carBody(this.skin));
     this._pressed('garage-base', this.skin.base);
     this._pressed('garage-accent', this.skin.accent);
     this._pressed('garage-pattern', this.skin.pattern);

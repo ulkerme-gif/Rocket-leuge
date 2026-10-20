@@ -20,7 +20,8 @@ import { PROTOCOL_VERSION, codeFromLocation, inviteLink, normalizeRoomCode, room
 import { formatLabel, normalizeTeamSize } from './game/teams.js';
 import { mutatorLabel, normalizeMutator } from './game/mutators.js';
 import { NameTags } from './visuals/NameTags.js';
-import { loadSkin } from './visuals/skins.js';
+import { loadSkin, saveSkin } from './visuals/skins.js';
+import { codeReward, unlock } from './game/unlocks.js';
 
 const el = id => document.getElementById(id);
 const show = (id, visible) => el(id).classList.toggle('hidden', !visible);
@@ -31,6 +32,7 @@ const teamName = team => (team === 'blue' ? 'MAVİ' : 'TURUNCU');
 const NAME_KEY = 'rocket-arena-player-name';
 const SIZE_KEY = 'rocket-arena-room-size';
 const INPUT_INTERVAL_MS = 1000 / 60 - 2; // ~60 Hz guest input (every frame at 60 fps)
+const REWARD_NAMES = { roadster: 'YILDIRIM' };
 const LOST_CONNECTION = {
   'host-closed': 'Odayı kuran kişi odayı kapattı.',
   timeout: 'Bağlantı koptu. Odayı kuran tablet uykuya geçmiş ya da internet kesilmiş olabilir.',
@@ -84,8 +86,7 @@ class OnlineApp {
       event.target.value = this.mutator;
       el('room-mutator-name').textContent = mutatorLabel(this.mutator);
     });
-    const skin = loadSkin();
-    el('skin-chip').style.setProperty('--chip', skin.base === 'team' ? 'linear-gradient(90deg,#1f74e0 50%,#f0661a 50%)' : skin.base);
+    this.updateSkinChip();
     const invited = codeFromLocation();
     if (invited) {
       el('room-code').value = invited;
@@ -97,6 +98,7 @@ class OnlineApp {
     el('network-test').onclick = () => this.testNetwork();
     el('room-code').addEventListener('input', e => {
       e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+      this.redeemSecret(e.target);
     });
     el('room-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.joinRoom(); } });
     el('room-share').onclick = () => this.shareInvite();
@@ -128,6 +130,30 @@ class OnlineApp {
   roomStatus(text) { el('room-card-status').textContent = text; }
   toast(text, ms = 2300) { el('online-toast').textContent = text; show('online-toast', true); this.toastUntil = performance.now() + ms; }
   hideToast() { show('online-toast', false); this.toastUntil = 0; }
+
+  updateSkinChip() {
+    const skin = loadSkin();
+    el('skin-chip').style.setProperty('--chip', skin.base === 'team' ? 'linear-gradient(90deg,#1f74e0 50%,#f0661a 50%)' : skin.base);
+  }
+
+  /**
+   * Secret codes in the ODA KODU box. They contain characters room codes never use,
+   * so they can't hide a real room: unlock the reward on this tablet and put it on the car.
+   */
+  redeemSecret(input) {
+    const reward = codeReward(input.value);
+    if (!reward) return false;
+    input.value = '';
+    input.blur(); // close the iPad keyboard so the message is visible
+    const fresh = unlock(reward);
+    saveSkin({ ...loadSkin(), body: reward });
+    this.updateSkinChip();
+    const name = REWARD_NAMES[reward] ?? reward;
+    this.status(fresh
+      ? `⚡ Gizli araba açıldı: ${name}! Arabana takıldı; online ve botlara karşı maçlarda onunla oynarsın. Garajdaki ARABA bölümünden değiştirebilirsin.`
+      : `⚡ ${name} arabana takıldı.`, 'unlock');
+    return true;
+  }
 
   setLobbySize(value) {
     this.teamSize = normalizeTeamSize(value);
@@ -280,6 +306,7 @@ class OnlineApp {
   // ---------------------------------------------------------------- guest
   async joinRoom() {
     if (this.busy) return;
+    if (this.redeemSecret(el('room-code'))) return;
     const typed = el('room-code').value;
     const code = normalizeRoomCode(typed);
     if (!code) { this.status(roomCodeProblem(typed), 'error'); el('room-code').focus(); return; }

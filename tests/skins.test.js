@@ -63,9 +63,10 @@ test('every pattern paints without errors; numbers and drawings are drawn on bot
   assert.ok(team.calls.some(([k, [v]]) => k === 'set:fillStyle' && v === '#f0661a'), 'team base uses the team colour');
 });
 
-test('body UVs: each side reads correctly from outside, the roof maps to the top strip', () => {
+for (const body of ['classic', 'roadster']) test(`body UVs (${body}): each side reads correctly from outside, the roof maps to the top strip`, () => {
   const view = new CarView(makeStaticCar({ id: 'x', team: 'blue' }), new THREE.Group());
-  const g = view.group.children[0].geometry;
+  view.setBody(body);
+  const g = view.bodyMesh.geometry;
   const pos = g.attributes.position, uv = g.attributes.uv, nrm = g.attributes.normal;
   const range = (r) => [1 - (r.y + r.h) / ATLAS_SIZE, 1 - r.y / ATLAS_SIZE];
   const within = (v, [a, b]) => v >= a - 1e-6 && v <= b + 1e-6;
