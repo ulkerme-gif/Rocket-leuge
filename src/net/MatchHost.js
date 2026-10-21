@@ -6,7 +6,7 @@ import { normalizeTeamSize, seatList } from '../game/teams.js';
 import { ZERO_INPUT, cleanInput, cleanName, asPacket } from './protocol.js';
 import { compactState, padLayoutOf } from './snapshot.js';
 import { PROTOCOL_VERSION } from './roomCode.js';
-import { cleanSkin, isDefaultSkin } from '../visuals/skins.js';
+import { cleanSkin, hasRcs, isDefaultSkin } from '../visuals/skins.js';
 import { MUTATOR, normalizeMutator } from '../game/mutators.js';
 
 const defaultNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -110,8 +110,9 @@ export class MatchHost {
       teamSize: this.teamSize, host: local,
     });
     if (this.sim) {
-      // Mid-match: take the wheel from the bot in this seat.
+      // Mid-match: take the wheel from the bot in this seat (and fly, with a YILDIRIM).
       this.sim.bots.delete(player.id);
+      this.sim.setRcs(player.id, hasRcs(player.skin));
       this._send(player, { type: 'roomStatus', status: 'playing', padLayout: this.padLayout, mutator: this.mutator });
       this._send(player, { type: 'snapshot', state: compactState(this.sim.getState(), 0) });
       this._notice(`${player.name} katıldı, botun yerine geçti.`, player);
@@ -151,13 +152,14 @@ export class MatchHost {
       p.updatedAt = 0;
     }
     const humanSeats = new Set(this.players.map((p) => p.id));
+    const rcsSeats = new Set(this.players.filter((p) => hasRcs(p.skin)).map((p) => p.id));
     this.sim = new Simulation({
       RAPIER: this.RAPIER,
       config: this.config,
       mode: MODE.MATCH,
       mutator: this.mutator,
       random: this.random,
-      players: this.seats.map((s) => ({ id: s.id, team: s.team, kind: humanSeats.has(s.id) ? 'human' : 'bot' })),
+      players: this.seats.map((s) => ({ id: s.id, team: s.team, kind: humanSeats.has(s.id) ? 'human' : 'bot', rcs: rcsSeats.has(s.id) })),
     });
     for (const s of this.seats) if (!humanSeats.has(s.id)) this._attachBot(s);
     this.eventOff = [
@@ -229,6 +231,7 @@ export class MatchHost {
     if (!this.players.length) { this._disposeSim(); return; }
     if (this.sim) {
       const seat = this.seats.find((s) => s.id === player.id);
+      this.sim.setRcs(seat.id, false); // the bot drives a plain classic car
       this._attachBot(seat);
       this._notice(`${player.name} ayrıldı, yerine bot geçti.`);
     }

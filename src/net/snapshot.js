@@ -45,6 +45,8 @@ export function compactState(state, lastProcessedSequence = 0) {
       onGround: !!c.onGround,
       isBoosting: !!c.isBoosting,
       isSupersonic: !!c.isSupersonic,
+      // RCS car (YILDIRIM) only, so classic cars cost no extra bytes: jets + flight buttons.
+      ...(c.rcs ? { rcs: 1, jet: c.rcsJet | 0, air: c.airborne ? 1 : 0 } : {}),
     })),
     pads: state.boostPads.map((p) => (p.active ? '1' : '0')).join(''),
   };

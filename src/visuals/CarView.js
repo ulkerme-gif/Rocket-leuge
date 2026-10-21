@@ -162,13 +162,24 @@ function buildRoadster(m) {
   );
   for (const x of [-0.18, 0.18]) parts.push(box(0.012, 0.05, 0.09, m.trim, x, -0.12, 0.655));
 
+  // RCS thruster pods at the four corners (the jets themselves live in CarView).
+  const rcsPods = [];
+  for (const z of [-0.55, 0.57]) for (const side of [-1, 1]) {
+    const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, 0.05, 10), m.trim);
+    pod.position.set(side * 0.395, -0.125, z);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.007, 5, 14).rotateX(Math.PI / 2), m.rcs);
+    ring.position.set(side * 0.395, -0.152, z);
+    parts.push(pod, ring);
+    rcsPods.push([side * 0.395, -0.155, z]);
+  }
+
   // Electric "exhaust": recessed emitter with a glowing team-colour ring.
   const emitter = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.085, 0.06, 16).rotateX(Math.PI / 2), m.trim);
   emitter.position.set(0, -0.045, 0.665);
   const coil = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.012, 6, 20), m.accent);
   coil.position.set(0, -0.045, 0.697);
   parts.push(emitter, coil);
-  return { parts, body, flame: { outer: 0x3fd8ff, inner: 0xeaffff, z: 0.71 }, nozzleZ: 0.75, nozzleY: -0.045 };
+  return { parts, body, flame: { outer: 0x3fd8ff, inner: 0xeaffff, z: 0.71 }, nozzleZ: 0.75, nozzleY: -0.045, rcsPods };
 }
 
 const BUILDERS = { classic: buildClassic, roadster: buildRoadster };
@@ -205,6 +216,7 @@ export class CarView {
       fender: new THREE.MeshStandardMaterial({ color: pal.body, metalness: 0.55, roughness: 0.28 }),
       interior: new THREE.MeshStandardMaterial({ color: 0x0a0f15, metalness: 0.2, roughness: 0.85 }),
       seat: new THREE.MeshStandardMaterial({ color: 0x1b2129, metalness: 0.1, roughness: 0.7 }),
+      rcs: new THREE.MeshStandardMaterial({ color: 0x7fe9ff, emissive: 0x3fd8ff, emissiveIntensity: 1.4 }),
     };
 
     this.shell = new THREE.Group();
@@ -244,6 +256,26 @@ export class CarView {
     this.flame.visible = false;
     this.group.add(this.flame);
 
+    // RCS jets (models with rcsPods only): short cyan cones, pointing down from each pod
+    // (hover / rise) or flipped up (descend). Driven by car.state.rcsJet.
+    const jetGeo = new THREE.ConeGeometry(0.05, 0.34, 10, 1, true).rotateX(Math.PI).translate(0, -0.17, 0);
+    const jetCore = new THREE.ConeGeometry(0.024, 0.22, 8, 1, true).rotateX(Math.PI).translate(0, -0.11, 0);
+    this.rcsJetMat = flameMat(0.8);
+    this.rcsJetMat.color.set(0x3fd8ff);
+    this.rcsCoreMat = flameMat(0.95);
+    this.rcsCoreMat.color.set(0xeaffff);
+    this.rcsJets = new THREE.Group();
+    this.rcsJets.name = 'rcs-jets';
+    this.rcsJetList = [0, 1, 2, 3].map(() => {
+      const jet = new THREE.Group();
+      jet.add(new THREE.Mesh(jetGeo, this.rcsJetMat), new THREE.Mesh(jetCore, this.rcsCoreMat));
+      this.rcsJets.add(jet);
+      return jet;
+    });
+    this.rcsJets.visible = false;
+    this.hasRcsPods = false;
+    this.group.add(this.rcsJets);
+
     this.nozzleLocal = new THREE.Vector3();
     this.renderPos = new THREE.Vector3();
     this.renderQuat = new THREE.Quaternion();
@@ -267,6 +299,9 @@ export class CarView {
     this.flameInnerMat.color.set(built.flame.inner);
     this.flame.position.set(0, built.nozzleY, built.flame.z);
     this.nozzleLocal.set(0, built.nozzleY, built.nozzleZ);
+    this.hasRcsPods = !!built.rcsPods;
+    built.rcsPods?.forEach(([x, y, z], i) => this.rcsJetList[i]?.position.set(x, y, z));
+    this.rcsJets.visible = false;
   }
 
   update(alpha) {
@@ -284,6 +319,16 @@ export class CarView {
     this.flame.visible = s.isBoosting;
     if (s.isBoosting) this.flame.scale.set(1, 1, (s.isSupersonic ? 1.45 : 1) * (0.8 + Math.random() * 0.4));
     this.accentMat.emissiveIntensity = s.isSupersonic ? 2.4 : 1.2;
+    const jet = this.hasRcsPods ? s.rcsJet ?? 0 : 0;
+    this.rcsJets.visible = jet !== 0;
+    if (jet !== 0) {
+      // 1 hover (short idle flicker), 2 rising (long), -1 descending (jets point up).
+      const length = jet === 2 ? 1.15 : jet === 1 ? 0.45 : -0.8;
+      for (const j of this.rcsJetList) j.scale.set(1, length * (0.8 + Math.random() * 0.4), 1);
+      this.materials.rcs.emissiveIntensity = jet === 1 ? 1.8 : 2.6;
+    } else if (this.hasRcsPods) {
+      this.materials.rcs.emissiveIntensity = 1.4;
+    }
   }
 
   /**

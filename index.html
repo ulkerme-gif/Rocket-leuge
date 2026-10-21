@@ -20,7 +20,7 @@
       </div>
       <button class="hud-pause" id="pause-button" type="button" aria-label="Oyunu duraklat">Ⅱ <span>MENU</span></button>
     </header>
-    <div id="boost-widget" class="boost-widget hidden"><span class="boost-caption">BOOST</span><strong id="boost-number">33</strong><div class="boost-track"><div id="boost-fill" class="boost-fill"></div></div></div>
+    <div id="boost-widget" class="boost-widget hidden"><span class="boost-caption">BOOST</span><strong id="boost-number">33</strong><div class="boost-track"><div id="boost-fill" class="boost-fill"></div></div><span id="rcs-badge" class="rcs-badge hidden" data-jet="0" aria-hidden="true">RCS <b>∞</b></span></div>
     <div id="camera-label" class="camera-label hidden">BALL CAM <strong>ON</strong></div>
     <div id="center-message" class="center-message hidden" role="status" aria-live="polite"></div>
     <div id="debug-panel" class="debug-panel hidden"></div>
@@ -101,8 +101,8 @@
       </div>
       <div class="touch-right">
         <button type="button" tabindex="-1" data-touch-action="ballCam" aria-label="Top kamerasını aç veya kapat" class="touch-small touch-cam">KAMERA</button>
-        <button type="button" tabindex="-1" data-touch-action="handbrake" aria-label="Drift; havada döndürme" class="touch-drift">DRIFT</button>
-        <button type="button" tabindex="-1" data-touch-action="jump" aria-label="Zıpla; havada tekrar bas: takla" class="touch-jump">ZIPLA</button>
+        <button type="button" tabindex="-1" data-touch-action="handbrake" aria-label="Drift; havada döndürme" class="touch-drift"><span class="lbl-ground">DRIFT</span><span class="lbl-air">İN ▼</span></button>
+        <button type="button" tabindex="-1" data-touch-action="jump" aria-label="Zıpla; havada tekrar bas: takla" class="touch-jump"><span class="lbl-ground">ZIPLA<small class="rcs-hint">TUT: UÇ</small></span><span class="lbl-air">YUKARI ▲</span></button>
         <button type="button" tabindex="-1" data-touch-action="boost" aria-label="Nitro" class="touch-boost">BOOST</button>
       </div>
       <div class="touch-training" aria-label="Antrenman">
@@ -110,7 +110,7 @@
         <button type="button" tabindex="-1" data-touch-action="resetBall" aria-label="Topu ortaya al" class="touch-small">TOP ↺</button>
       </div>
     </div>
-    <div id="control-strip" class="control-strip"><span><b>WASD</b> SÜR</span><span><b>SPACE</b> ZIPLA / FLIP</span><span><b>SHIFT</b> BOOST</span><span><b>CTRL</b> DRIFT</span><span><b>C</b> TOP KAMERASI</span><span><b>ESC</b> DURAKLAT</span></div>
+    <div id="control-strip" class="control-strip"><span><b>WASD</b> SÜR</span><span><b>SPACE</b> ZIPLA / FLIP</span><span><b>SHIFT</b> BOOST</span><span><b>CTRL</b> DRIFT</span><span><b>C</b> TOP KAMERASI</span><span><b>ESC</b> DURAKLAT</span><span class="rcs-only"><b>YILDIRIM HAVADA</b> SPACE YUKARI · CTRL İN · W/S İLERİ-GERİ · Q/E YANA</span></div>
   </div>
   <div id="loading-screen" class="loading-screen"><div class="loading-wordmark">ROCKET <b>ARENA</b></div><div id="loading-text">3D motor hazırlanıyor…</div><div class="loading-line"><i></i></div></div>
   <script type="module" src="/src/main.js"></script>

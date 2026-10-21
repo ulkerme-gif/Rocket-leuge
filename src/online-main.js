@@ -22,6 +22,7 @@ import { mutatorLabel, normalizeMutator } from './game/mutators.js';
 import { NameTags } from './visuals/NameTags.js';
 import { loadSkin, saveSkin } from './visuals/skins.js';
 import { codeReward, unlock } from './game/unlocks.js';
+import { RcsHud } from './ui/RcsHud.js';
 
 const el = id => document.getElementById(id);
 const show = (id, visible) => el(id).classList.toggle('hidden', !visible);
@@ -56,6 +57,7 @@ class OnlineApp {
     this.camera = new CameraRig(this.renderer.camera, CONFIG.camera);
     this.input = new InputManager(CONFIG.controls);
     this.nameTags = new NameTags(el('name-tags'));
+    this.rcsHud = new RcsHud(document);
     this.tagObjects = null; // id -> car render group of the current view
     this.cameraLabel = '';
 
@@ -150,8 +152,8 @@ class OnlineApp {
     this.updateSkinChip();
     const name = REWARD_NAMES[reward] ?? reward;
     this.status(fresh
-      ? `⚡ Gizli araba açıldı: ${name}! Arabana takıldı; online ve botlara karşı maçlarda onunla oynarsın. Garajdaki ARABA bölümünden değiştirebilirsin.`
-      : `⚡ ${name} arabana takıldı.`, 'unlock');
+      ? `⚡ Gizli araba açıldı: ${name}! Arabana takıldı; online ve botlara karşı maçlarda onunla oynarsın. Uçabilir: ZIPLA'ya basılı tut, havada DRIFT ile in. RCS yakıtı sınırsız. Garajdaki ARABA bölümünden değiştirebilirsin.`
+      : `⚡ ${name} arabana takıldı. Uçmak için ZIPLA'ya basılı tut.`, 'unlock');
     return true;
   }
 
@@ -426,6 +428,7 @@ class OnlineApp {
     el('online-clock').textContent = state.isOvertime ? `+${clock(state.overtimeElapsed)}` : clock(state.timeRemaining);
     el('online-period').textContent = state.isOvertime ? 'OVERTIME' : formatLabel(this.roster?.teamSize ?? 1);
     const me = state.cars.find(c => c.id === this.myId);
+    if (this.role === 'guest') this.rcsHud.set({ enabled: !!me?.rcs, airborne: !!me?.air, jet: me?.jet ?? 0 });
     const boost = Math.round(me?.boost || 0);
     el('online-boost-number').textContent = boost;
     el('online-boost-fill').style.width = `${boost}%`;
@@ -455,6 +458,7 @@ class OnlineApp {
   disposeView() {
     if (this.view) this.tagObjects = null;
     this.view?.dispose(); this.view = null; this.state = null;
+    this.rcsHud.clear();
     show('online-hud', false); show('online-boost', false); show('online-camera', false);
     this.camera.snap();
   }
@@ -585,7 +589,8 @@ class OnlineApp {
     this.syncHostView();
     const sim = match.sim;
     const car = sim?.carById.get(this.myId);
-    if (!this.gameView || !sim || !car) { this.camera.updateOrbit(dt, this.orbitDims, focus.set(0, 1, 0)); return; }
+    if (!this.gameView || !sim || !car) { this.rcsHud.clear(); this.camera.updateOrbit(dt, this.orbitDims, focus.set(0, 1, 0)); return; }
+    this.rcsHud.set({ enabled: car.rcs, airborne: car.airborne, jet: car.state.rcsJet });
     this.gameView.update(alpha, dt);
     car.getRenderTransform(alpha, pos, quat);
     vel.copy(car.velocity);

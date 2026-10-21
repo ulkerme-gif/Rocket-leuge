@@ -114,6 +114,27 @@ export const PHYSICS = {
       probeMargin: 0.3,
       maxSpeed: 6,
     },
+
+    // RCS thrusters of the secret YILDIRIM car (CarController.rcs = true): it flies.
+    // RCS has NO fuel: it never runs out (boost still works and drains as usual).
+    // In the air:  jump held = rise, handbrake held = descend, stick up/down = forward/back,
+    //              stick left/right = turn, roll keys = strafe; the car keeps itself level.
+    // Once it has risen with RCS it hovers (altitude hold) until it lands.
+    rcs: {
+      liftAccel: 9,            // m/s² up while ZIPLA / Space is held in the air
+      descendAccel: 10,        // m/s² down while DRIFT / Ctrl is held in the air
+      maxClimbSpeed: 7,        // m/s
+      maxDescendSpeed: 9,      // m/s
+      hoverDamping: 4,         // 1/s, vertical speed decay while hovering without input
+      translateAccel: 9,       // m/s² forward / back from the stick
+      strafeAccel: 7,          // m/s² sideways from the roll keys (Q/E, LB/RB)
+      maxTranslateSpeed: 12,   // m/s reachable with RCS alone (boost goes faster)
+      horizontalDamping: 0.8,  // 1/s, gentle stop while hovering without stick input
+      yawRate: 2.4,            // rad/s turn rate at full stick
+      levelGain: 6,            // 1/s, pulls pitch / roll back to flat
+      attitudeResponse: 12,    // 1/s, how fast the spin follows the target
+      airborneDelay: 0.08,     // s without wheel contact before the HUD shows the flight buttons
+    },
   },
 
   ball: {

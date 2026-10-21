@@ -30,6 +30,8 @@ export const TEAM_BODY = Object.freeze({ blue: '#1f74e0', orange: '#f0661a' });
 /** Car models. Everything except 'classic' is unlocked with a secret code (src/game/unlocks.js). */
 export const CAR_BODIES = Object.freeze(['classic', 'roadster']);
 export const BODY_LABELS = Object.freeze({ classic: 'KLASİK', roadster: 'YILDIRIM ⚡' });
+/** Models with RCS thrusters: they fly (unlimited RCS fuel) and use flight controls in the air. */
+export const RCS_BODIES = Object.freeze(['roadster']);
 export const DEFAULT_SKIN = Object.freeze({ v: 1, base: 'team', accent: '#ffffff', pattern: 'solid', number: '', art: '' });
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -53,6 +55,9 @@ export function cleanSkin(raw) {
 }
 
 export const carBody = (skin) => (skin && CAR_BODIES.includes(skin.body) ? skin.body : 'classic');
+
+/** True when this skin's car model flies with RCS thrusters (YILDIRIM). */
+export const hasRcs = (skin) => RCS_BODIES.includes(carBody(skin));
 
 /** True when the paint needs no texture (team colour, no pattern, number or drawing). Ignores the car model. */
 export const isDefaultPaint = (skin) => {

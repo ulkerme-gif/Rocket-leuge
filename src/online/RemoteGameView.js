@@ -97,6 +97,7 @@ export class RemoteGameView {
       car.state.onGround = to.onGround;
       car.state.isBoosting = to.isBoosting;
       car.state.isSupersonic = to.isSupersonic;
+      car.state.rcsJet = to.jet ?? 0;
       const forwardSpeed = car.velocity.dot(car.forward);
       for (const wheel of car.wheels) {
         wheel.spin = (wheel.spin + (dt * forwardSpeed) / CONFIG.physics.car.wheels.radius) % (Math.PI * 2);

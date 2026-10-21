@@ -8,7 +8,7 @@ export const ROOM_CODE_LENGTH = 4;
 /** Shared PeerJS namespace prefix: keeps our rooms apart from other apps on the public broker. */
 export const PEER_ID_PREFIX = 'rocket-arena-3d-';
 /** Bumped whenever host and guest stop understanding each other's messages. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4; // 4: YILDIRIM flies (RCS), host must know it
 
 export function generateRoomCode(random = Math.random) {
   let code = '';

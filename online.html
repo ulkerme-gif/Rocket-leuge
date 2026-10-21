@@ -11,7 +11,7 @@
       <div class="scoreboard"><span class="score score-blue" id="online-blue">0</span><div class="score-clock"><span id="online-clock">5:00</span><small id="online-period">ONLINE</small></div><span class="score score-orange" id="online-orange">0</span></div>
       <button class="hud-pause" type="button" id="online-leave">ÇIK</button>
     </header>
-    <div id="online-boost" class="boost-widget hidden"><span class="boost-caption">BOOST</span><strong id="online-boost-number">0</strong><div class="boost-track"><div id="online-boost-fill" class="boost-fill"></div></div></div>
+    <div id="online-boost" class="boost-widget hidden"><span class="boost-caption">BOOST</span><strong id="online-boost-number">0</strong><div class="boost-track"><div id="online-boost-fill" class="boost-fill"></div></div><span id="rcs-badge" class="rcs-badge hidden" data-jet="0" aria-hidden="true">RCS <b>∞</b></span></div>
     <div id="online-camera" class="camera-label hidden">BALL CAM <strong>ON</strong></div>
     <button type="button" id="online-rematch" class="btn btn-primary hidden" style="position:absolute;top:56%;left:50%;transform:translateX(-50%);z-index:30;white-space:nowrap">TEKRAR MAÇ →</button>
     <div id="online-toast" class="center-message hidden" role="status"></div>
@@ -73,12 +73,12 @@
       </div>
       <div class="touch-right">
         <button type="button" tabindex="-1" data-touch-action="ballCam" aria-label="Top kamerasını aç veya kapat" class="touch-small touch-cam">KAMERA</button>
-        <button type="button" tabindex="-1" data-touch-action="handbrake" aria-label="Drift; havada döndürme" class="touch-drift">DRIFT</button>
-        <button type="button" tabindex="-1" data-touch-action="jump" aria-label="Zıpla; havada tekrar bas: takla" class="touch-jump">ZIPLA</button>
+        <button type="button" tabindex="-1" data-touch-action="handbrake" aria-label="Drift; havada döndürme" class="touch-drift"><span class="lbl-ground">DRIFT</span><span class="lbl-air">İN ▼</span></button>
+        <button type="button" tabindex="-1" data-touch-action="jump" aria-label="Zıpla; havada tekrar bas: takla" class="touch-jump"><span class="lbl-ground">ZIPLA<small class="rcs-hint">TUT: UÇ</small></span><span class="lbl-air">YUKARI ▲</span></button>
         <button type="button" tabindex="-1" data-touch-action="boost" aria-label="Nitro" class="touch-boost">BOOST</button>
       </div>
     </div>
-    <div id="online-controls" class="control-strip"><span><b>WASD</b> SÜR</span><span><b>SPACE</b> ZIPLA</span><span><b>SHIFT</b> BOOST</span><span><b>CTRL</b> DRIFT</span><span><b>C</b> TOP KAMERASI</span><span><b>ESC</b> SERBEST</span></div>
+    <div id="online-controls" class="control-strip"><span><b>WASD</b> SÜR</span><span><b>SPACE</b> ZIPLA</span><span><b>SHIFT</b> BOOST</span><span><b>CTRL</b> DRIFT</span><span><b>C</b> TOP KAMERASI</span><span><b>ESC</b> SERBEST</span><span class="rcs-only"><b>YILDIRIM HAVADA</b> SPACE YUKARI · CTRL İN · W/S İLERİ-GERİ · Q/E YANA</span></div>
   </div>
   <script type="module" src="/src/online-main.js"></script>
 </body>

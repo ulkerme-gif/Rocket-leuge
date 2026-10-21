@@ -33,6 +33,8 @@ const TWO_PI = Math.PI * 2;
  *  - RL air control (pitch/yaw/roll torques + damping)
  *  - jump (with hold), double jump, directional dodges, flip cancel
  *  - boost, speed clamps and roof/side auto-flip recovery
+ *  - optional RCS flight (rcs = true, the YILDIRIM car): hover, rise/descend,
+ *    translate and auto-level in the air instead of RL air control / dodges
  */
 export class CarController {
   /**
@@ -53,6 +55,7 @@ export class CarController {
     this.gravity = Math.abs(physicsWorld.gravity);
     this.mass = this.cfg.mass;
     this.unlimitedBoost = false;
+    this.rcs = false; // RCS thrusters (YILDIRIM): set by the Simulation, never limited by fuel
     this.onEvent = null; // (type, payload) => void, set by the Simulation
 
     const R = physicsWorld.RAPIER;
@@ -139,6 +142,9 @@ export class CarController {
       autoFlip: false,
       autoFlipTime: 0,
       autoFlipTarget: new Vector3(0, 1, 0),
+      airTime: 0,       // s without any wheel contact
+      rcsHover: false,  // RCS altitude hold, engaged by rising with RCS, cleared on landing
+      rcsJet: 0,        // RCS jets for visuals / HUD: 0 off, 1 hover, 2 rising, -1 descending
     };
   }
 
@@ -160,10 +166,15 @@ export class CarController {
     c.handbrake = !!ctrl.handbrake;
   }
 
+  /** In the air long enough for the HUD to switch an RCS car's buttons to flight labels. */
+  get airborne() {
+    return this.state.airTime > this.cfg.rcs.airborneDelay;
+  }
+
   /** Whether a jump press right now would start a double jump / dodge. */
   get hasFlipAvailable() {
     const s = this.state;
-    return !s.onGround && !s.hasDoubleJumped && !s.hasFlipped && (!s.hasJumped || s.airTimeSinceJump < this.cfg.jump.doubleJumpWindow);
+    return !this.rcs && !s.onGround && !s.hasDoubleJumped && !s.hasFlipped && (!s.hasJumped || s.airTimeSinceJump < this.cfg.jump.doubleJumpWindow);
   }
 
   // ------------------------------------------------------------------ tick
@@ -178,6 +189,9 @@ export class CarController {
     const grounded = n >= this.cfg.wheels.groundedWheelCount;
     s.onGround = grounded;
     s.onRoofOrSide = n < 2 ? this._probeBodySurface() : false;
+    s.airTime = n === 0 ? s.airTime + dt : 0;
+    s.rcsJet = 0;
+    if (grounded) s.rcsHover = false;
 
     this._applySuspension(dt);
 
@@ -189,12 +203,13 @@ export class CarController {
 
     if (s.autoFlip) this._applyAutoFlip(dt);
     else if (n > 0) this._applyGroundDrive(dt, boosting);
+    else if (this.rcs) this._applyRcsFlight(dt, boosting);
     else this._applyAirControl(dt);
 
     if (boosting) {
       const accel = n > 0 ? this.boostCfg.groundAccel : this.boostCfg.airAccel;
       this._addVelocity(_c.copy(this.forward).multiplyScalar(accel * dt));
-    } else if (n === 0 && ctrl.throttle !== 0) {
+    } else if (n === 0 && ctrl.throttle !== 0 && !this.rcs) {
       this._addVelocity(_c.copy(this.forward).multiplyScalar(this.cfg.drive.airThrottleAccel * ctrl.throttle * dt));
     }
 
@@ -387,6 +402,8 @@ export class CarController {
     }
 
     if (!grounded && !s.isJumping) {
+      // RCS car: no double jump / dodge. Holding the button in the air fires the lift jets instead.
+      if (this.rcs) return;
       const canAir = !s.hasDoubleJumped && !s.hasFlipped && (!s.hasJumped || s.airTimeSinceJump < J.doubleJumpWindow);
       if (!canAir) return;
       const fwdIn = ctrl.pitch, sideIn = ctrl.steer;
@@ -513,6 +530,67 @@ export class CarController {
     const target = _c.copy(this.right).multiplyScalar(wR).addScaledVector(this.up, wU).addScaledVector(this.forward, wF);
     if (target.length() > this.cfg.maxAngularSpeed) target.setLength(this.cfg.maxAngularSpeed);
     this._addAngularVelocity(_b.copy(target).sub(this.angularVelocity));
+    for (const w of this.wheels) w.steer = w.front ? ctrl.steer * 0.3 : 0;
+  }
+
+  /**
+   * RCS flight (YILDIRIM), used instead of RL air control while no wheel touches anything.
+   * Jump held = rise, handbrake held = descend, pitch = forward/back, steer = turn,
+   * roll = strafe. Rising engages hover (gravity cancelled, vertical speed held at zero)
+   * until the car lands. Pitch and roll are always pulled back to level. No fuel.
+   */
+  _applyRcsFlight(dt, boosting) {
+    const s = this.state;
+    const R = this.cfg.rcs;
+    const ctrl = this.controls;
+    const up = ctrl.jump && !s.isJumping; // the first 0.2 s belong to the normal jump
+    const down = ctrl.handbrake;
+    const lift = (up ? 1 : 0) - (down ? 1 : 0);
+    if (lift > 0) s.rcsHover = true;
+
+    // Vertical, in world space (world gravity is what the jets fight).
+    const vy = this.velocity.y;
+    let dvy = s.rcsHover ? this.gravity * dt : 0;
+    if (lift > 0) dvy += clamp(R.maxClimbSpeed - vy, 0, R.liftAccel * dt);
+    else if (lift < 0) dvy -= clamp(vy + R.maxDescendSpeed, 0, R.descendAccel * dt);
+    else if (s.rcsHover) dvy -= vy * Math.min(1, R.hoverDamping * dt);
+
+    // Horizontal frame from the car's heading.
+    const f2 = _a.set(this.forward.x, 0, this.forward.z);
+    if (f2.lengthSq() < 1e-4) f2.set(-this.up.x, 0, -this.up.z);
+    if (f2.lengthSq() < 1e-6) f2.set(0, 0, -1);
+    f2.normalize();
+    const r2 = _b.crossVectors(f2, WORLD_UP).normalize();
+    const vF = this.velocity.dot(f2);
+    const vR = this.velocity.dot(r2);
+    const fwdIn = ctrl.pitch;                       // stick up / W = forward
+    const sideIn = ctrl.handbrake ? 0 : ctrl.roll;  // handbrake turns steer into roll in InputManager
+    const thrust = (v, input, accel) => {
+      if (!input) return 0;
+      const target = input * R.maxTranslateSpeed;
+      return input > 0 ? clamp(target - v, 0, accel * input * dt) : -clamp(v - target, 0, -accel * input * dt);
+    };
+    let dvF = thrust(vF, fwdIn, R.translateAccel);
+    let dvR = thrust(vR, sideIn, R.strafeAccel);
+    if (s.rcsHover && !boosting) {
+      const k = Math.min(1, R.horizontalDamping * dt);
+      if (!fwdIn) dvF -= vF * k;
+      if (!sideIn) dvR -= vR * k;
+    }
+    this._addVelocity(_c.copy(f2).multiplyScalar(dvF).addScaledVector(r2, dvR).addScaledVector(WORLD_UP, dvy));
+
+    // Attitude: level out pitch / roll, turn with the stick around world up.
+    const axis = _c.crossVectors(this.up, WORLD_UP);
+    const sinA = axis.length();
+    const angle = Math.atan2(sinA, this.up.y);
+    if (sinA > 1e-4) axis.multiplyScalar(1 / sinA);
+    else if (this.up.y < 0) axis.copy(this.forward); // upside down: roll over
+    else axis.set(0, 0, 0);
+    const target = axis.multiplyScalar(Math.min(angle * R.levelGain, this.cfg.maxAngularSpeed))
+      .addScaledVector(WORLD_UP, -ctrl.steer * R.yawRate);
+    this._addAngularVelocity(target.sub(this.angularVelocity).multiplyScalar(Math.min(1, R.attitudeResponse * dt)));
+
+    s.rcsJet = lift > 0 ? 2 : lift < 0 ? -1 : s.rcsHover ? 1 : 0;
     for (const w of this.wheels) w.steer = w.front ? ctrl.steer * 0.3 : 0;
   }
 

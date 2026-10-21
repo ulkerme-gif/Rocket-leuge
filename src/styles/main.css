@@ -127,3 +127,20 @@ body.mode-training .touch-training{display:flex}
   .garage-panel{top:auto;width:100%;height:58vh;padding-top:16px;background:#030a13f2;border-top:1px solid #3b627d88}
   .garage-panel h2{font-size:42px}
 }
+
+/* ---------------------------------------------------------------------------
+   YILDIRIM (RCS car). body.rcs-car while you drive it, body.rcs-air while it flies:
+   the same two buttons become YUKARI ▲ (jump) and İN ▼ (drift). See src/ui/RcsHud.js.
+   --------------------------------------------------------------------------- */
+.touch-controls .lbl-ground,.touch-controls .lbl-air{display:block;pointer-events:none;text-align:center;line-height:1}
+.touch-controls .lbl-air,.rcs-hint,.control-strip .rcs-only{display:none!important}
+body.rcs-car.rcs-air .touch-controls .lbl-air{display:block!important}
+body.rcs-car.rcs-air .touch-controls .lbl-ground{display:none!important}
+body.rcs-car .rcs-hint{display:block!important;margin-top:4px;font-size:10px;letter-spacing:.08em;opacity:.85}
+body.rcs-car .control-strip .rcs-only{display:block!important;color:#8fe9ff}
+body.rcs-car.rcs-air .touch-jump,body.rcs-car.rcs-air .touch-drift{border-color:#8fe9ffcc;box-shadow:0 0 0 3px #3fd8ff40,0 6px 22px #0009}
+body.rcs-car.rcs-air .touch-drift:not(.pressed){background:#0b3247e6}
+.rcs-badge{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);white-space:nowrap;padding:4px 10px 3px;border-radius:999px;
+  background:#08202fe6;border:1px solid #3fd8ff88;color:#bff4ff;font:800 13px/1 'Barlow Condensed','Arial Narrow',system-ui,sans-serif;letter-spacing:.12em}
+.rcs-badge b{font-size:17px;margin-left:2px;color:#eaffff}
+.rcs-badge:not([data-jet="0"]){border-color:#8fe9ff;box-shadow:0 0 14px #3fd8ff88;color:#eaffff}

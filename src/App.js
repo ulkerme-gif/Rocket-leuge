@@ -15,8 +15,9 @@ import { Renderer } from './visuals/Renderer.js';
 import { CarView } from './visuals/CarView.js';
 import { NameTags } from './visuals/NameTags.js';
 import { makeStaticCar } from './visuals/staticCar.js';
-import { loadSkin, saveSkin } from './visuals/skins.js';
+import { hasRcs, loadSkin, saveSkin } from './visuals/skins.js';
 import { Garage } from './ui/Garage.js';
+import { RcsHud } from './ui/RcsHud.js';
 
 const el = (id) => document.getElementById(id);
 const show = (id, visible) => el(id).classList.toggle('hidden', !visible);
@@ -60,6 +61,7 @@ export class App {
       onRender: (alpha, dt) => this._render(alpha, dt),
     });
     this.nameTags = new NameTags(el('name-tags'));
+    this.rcsHud = new RcsHud(document);
     this.tagObjects = null;
     this.preview = null;
     this.returnToOnline = false;
@@ -173,11 +175,13 @@ export class App {
       ...Array.from({ length: n - 1 }, (_, i) => ({ id: `blue-${i + 2}`, team: TEAM.BLUE, kind: 'bot' })),
       ...Array.from({ length: n }, (_, i) => ({ id: `orange-${i + 1}`, team: TEAM.ORANGE, kind: 'bot' })),
     ] : [];
+    const skin = loadSkin();
     this.sim = new Simulation({
       RAPIER: this.RAPIER,
       config: CONFIG,
       mode,
-      players: [{ id: 'player', team: TEAM.BLUE, kind: 'human' }, ...bots],
+      // YILDIRIM has RCS thrusters: it flies, with flight controls in the air.
+      players: [{ id: 'player', team: TEAM.BLUE, kind: 'human', rcs: hasRcs(skin) }, ...bots],
     });
     for (const bot of bots) {
       this.sim.attachBot(bot.id, new BotController({ carId: bot.id, team: bot.team, config: CONFIG.bot }));
@@ -185,7 +189,7 @@ export class App {
     this.matchLabel = mode === MODE.MATCH ? formatLabel(n) : 'FREE PLAY';
     document.body.classList.toggle('mode-training', mode === MODE.TRAINING);
     this.view = new GameView(this.renderer, this.sim);
-    this.view.carViews.get('player')?.setSkin(loadSkin());
+    this.view.carViews.get('player')?.setSkin(skin);
     this.tagObjects = new Map([...this.view.carViews].map(([id, view]) => [id, view.group]));
     this.nameTags.set(this.sim.cars.filter((c) => c.id !== 'player').map((c) => ({ id: c.id, text: 'BOT', team: c.team })));
     this.unsubs.push(
@@ -211,6 +215,7 @@ export class App {
     this.unsubs.forEach((fn) => fn());
     this.unsubs = [];
     this.nameTags.clear();
+    this.rcsHud.clear();
     this.tagObjects = null;
     this.view?.dispose();
     this.view = null;
@@ -383,6 +388,7 @@ export class App {
     el('clock').textContent = this.mode === MODE.TRAINING ? '∞' : s.isOvertime ? `+${fmtTime(s.overtimeElapsed)}` : fmtTime(s.timeRemaining);
     el('period').textContent = this.mode === MODE.TRAINING ? 'FREE PLAY' : s.isOvertime ? 'OVERTIME' : this.matchLabel;
     const me = s.cars.find((c) => c.id === 'player');
+    this.rcsHud.set({ enabled: !!me?.rcs, airborne: me?.airborne, jet: me?.rcsJet });
     const boost = Math.round(me?.boost ?? 0);
     el('boost-number').textContent = boost;
     el('boost-fill').style.width = `${boost}%`;

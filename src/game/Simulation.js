@@ -27,7 +27,8 @@ export class Simulation {
    * @param {object} [o.config] defaults to CONFIG
   * @param {'match'|'training'|'demo'} [o.mode]
   * @param {string} [o.mutator]
-   * @param {Array<{id:string, team:'blue'|'orange', kind?:'human'|'bot'}>} [o.players]
+   * @param {Array<{id:string, team:'blue'|'orange', kind?:'human'|'bot', rcs?:boolean}>} [o.players]
+   *   rcs: the car has RCS thrusters and flies (secret YILDIRIM car)
    * @param {() => number} [o.random] RNG used for kickoff spots
    */
   constructor({ RAPIER, config = CONFIG, mode = MODE.MATCH, mutator = MUTATOR.CLASSIC, players, random = Math.random }) {
@@ -49,6 +50,7 @@ export class Simulation {
     this.cars = players.map((p) => {
       const car = new CarController(this.physics, { id: p.id, team: p.team, physicsConfig: config.physics });
       car.kind = p.kind ?? 'human';
+      car.rcs = !!p.rcs;
       car.onEvent = (type, payload) => this.events.emit(type, payload);
       return car;
     });
@@ -78,6 +80,14 @@ export class Simulation {
 
   start() {
     this.rules.start();
+  }
+
+  /** Turns a car's RCS flight on or off (a player with YILDIRIM took over / left a seat). */
+  setRcs(carId, on) {
+    const car = this.carById.get(carId);
+    if (!car) return;
+    car.rcs = !!on;
+    if (!car.rcs) { car.state.rcsHover = false; car.state.rcsJet = 0; }
   }
 
   /**
@@ -246,6 +256,9 @@ export class Simulation {
         isBoosting: c.state.isBoosting,
         isSupersonic: c.state.isSupersonic,
         onRoofOrSide: c.state.onRoofOrSide,
+        rcs: c.rcs,
+        rcsJet: c.state.rcsJet,
+        airborne: c.airborne,
       })),
       boostPads: this.boostPads.pads.map((p) => ({ index: p.index, position: { x: p.x, y: 0, z: p.z }, big: p.big, active: p.active, timer: p.timer })),
     };
